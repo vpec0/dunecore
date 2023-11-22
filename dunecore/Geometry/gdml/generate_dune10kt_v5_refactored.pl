@@ -252,7 +252,7 @@ $TPCInner_x   = $InnerDrift   + 3*$APAWirePlaneSpacing + $TPCWirePlaneThickness;
 $TPCOuter_x   = $OuterDrift + 3*$APAWirePlaneSpacing + $TPCWirePlaneThickness;
 
 $TPC_z    =   $APAphys_z + $APAGap_z;
-$TPC_y    =   $APAphys_y + $APAGap_y;
+$TPC_y    =   $APAphys_y + 0.5*$APAGap_y; # this needs to be 1/2 of the gap as 1 gap is shared between top and bottom TPC
 
 $CPATube_OD = 5.066;
 #$CPATube_ID = 4.747;
