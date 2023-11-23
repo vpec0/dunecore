@@ -111,6 +111,8 @@ $UVAngle45Option = 0;
 
 
 $inch = 2.54;
+$mm   = 0.1;
+$cm   = 1. ;
 
 ##################################################################
 ##################### Wire Plane Parameters ######################
@@ -182,8 +184,9 @@ elsif($workspace==2){
 
 $nAPAs                 =     $nAPAWide*$nAPAHigh*$nAPALong;
 
-
-$G10thickness = 3*$inch/16;
+$orig_G10thickness = $inch/8;
+$G10thickness = $orig_G10thickness + 0.49*$mm;
+#$G10thickness = 3*$inch/16;
 $WrapCover    = $inch/16;
 
 $SpaceAPAToCryoWall    =     15;
@@ -239,9 +242,12 @@ $Uactive_y    = $APAFrame_y + 2*$G10thickness - $ReadoutBoardOverlap;
   # the last G10 board for the grid, then a cover. This is not "covered" by the board
 $APAphys_y    = $APAFrame_y + 4*$G10thickness + $WrapCover;
 
-$APAGap_y     =    0.4;  #separation between APAs (cover to cover) along the incident beam axis
-$APAGap_z     =    0.8;  #separation between APAs (cover to cover) along the vertical axis
-
+# original variables
+$orig_APAGap_y     =    0.4;  #separation between APAs (cover to cover) along the incident beam axis
+$orig_APAGap_z     =    0.8;  #separation between APAs (cover to cover) along the vertical axis
+# shrink the gap to compensate the expansion of the G10/FR4 boards
+$APAGap_y     =  $orig_APAGap_y - 2*4*($G10thickness - $orig_G10thickness); # 4 boards on each side of the gap
+$APAGap_z     =  $orig_APAGap_z; # - 2*2*($G10thickness - $orig_G10thickness);  #separation between APAs (cover to cover) along the vertical axis
 
   # include APA spacing in y and z so volTPCs touch in y and z directions with correct APA
   # spacing - this makes for smoother event generation.
@@ -252,12 +258,13 @@ $TPCInner_x   = $InnerDrift   + 3*$APAWirePlaneSpacing + $TPCWirePlaneThickness;
 $TPCOuter_x   = $OuterDrift + 3*$APAWirePlaneSpacing + $TPCWirePlaneThickness;
 
 $TPC_z    =   $APAphys_z + $APAGap_z;
-$TPC_y    =   $APAphys_y + $APAGap_y;
+$TPC_y    =   $APAphys_y + $APAGap_y # in general, this needs to be 0.5 * the gap as the gap i on only 1 side!
+    + 4*($G10thickness - $orig_G10thickness);
 
 $CPATube_OD = 5.066;
 #$CPATube_ID = 4.747;
 
-$Cathode_x                 =    0.3; #0.016; temporary fix for thicker FR-4 board
+$Cathode_x                 =    0.016; #0.3; #0.016; temporary fix for thicker FR-4 board
 $Cathode_y                 =    $APAphys_y - $CPATube_OD;
 $Cathode_z                 =    $APAphys_z - $CPATube_OD;
 
@@ -555,6 +562,9 @@ sub gen_TPC
     my $TPCActive_y   =  $_[1] - $APAGap_y/2 - $ReadoutBoardOverlap ; #TODO: make the Active height more accurate
     my $TPCActive_z   =  $_[2];
 
+    print "TPC Y: $_[1], TPCActive Y: $TPCActive_y, APAGap Y: $APAGap_y, APAphys Y: $APAphys_y, ReadoutBoardOverlap: $ReadoutBoardOverlap\n";
+    print "TPC Z: $_[2], TPCActive Z: $TPCActive_z, APAGap Z: $APAGap_z, APAphys Z: $APAphys_z\n";
+
 
 #constructs everything inside volTPC, namely
 # (moving from left to right, or from +x to -x)
@@ -565,17 +575,15 @@ sub gen_TPC
 
     #### Temporary fix #####
     # these are temporary variables, used to revert the wire geometry back, before changes of the G10 geometry
-    my $G10thickness_fix = $inch/8;
+    my $APAFrame_z_fix = $APAphys_z - 2*(2*$orig_G10thickness+$WrapCover);
 
-    my $APAFrame_z_fix = 231.59 - 2*(2*$G10thickness_fix+$WrapCover);
+    my $Uactive_y_fix = $APAFrame_y + 2*$orig_G10thickness - $ReadoutBoardOverlap;
+    my $Uactive_z_fix = $APAFrame_z_fix + 2*$orig_G10thickness;
 
-    my $Uactive_y_fix = $APAFrame_y + 2*$G10thickness_fix - $ReadoutBoardOverlap;
-    my $Uactive_z_fix = $APAFrame_z_fix + 2*$G10thickness_fix;
-
-    my $Vactive_y_fix = $APAFrame_y + 1*$G10thickness_fix - $ReadoutBoardOverlap;
+    my $Vactive_y_fix = $APAFrame_y + 1*$orig_G10thickness - $ReadoutBoardOverlap;
     my $Vactive_z_fix = $APAFrame_z_fix;
 
-    my $Zactive_y_fix    = $APAFrame_y + 0*$G10thickness_fix - $ReadoutBoardOverlap;
+    my $Zactive_y_fix    = $APAFrame_y + 0*$orig_G10thickness - $ReadoutBoardOverlap;
     ########################
 
 # Create the TPC fragment file name,
@@ -691,7 +699,7 @@ print $wout "$NumberCommonVWires V common wires\n";
 
 # hard codeed number will be a factor determined from engineering spreadsheets on wire endpoints,
 # but since that won't exist for a while, use this number to avoid overlaps
-my $FirstUWireOffset = .55 + $G10thickness_fix + 2*$G10thickness_fix*$TanUAngle - $UWire_zint;
+my $FirstUWireOffset = .55 + $orig_G10thickness + 2*$orig_G10thickness*$TanUAngle - $UWire_zint;
 my $FirstVWireOffset = .5; # doesnt include a G10 board in width
 
 if($Pitch3mmVersion==1){
@@ -1266,21 +1274,22 @@ EOF
 
     my $BottomOfAPA = - $TPC_y/2 + $APAGap_y/2;
 
-
+    # Z plane is aligned with the bottom edge of the frame in Y
     $posZplane[0]   = -$_[0]/2 + $APAWirePlaneSpacing - $TPCWirePlaneThickness/2;
     $posZplane[1]   = $BottomOfAPA + $WrapCover + 4*$G10thickness + $Zactive_y/2;
     $posZplane[2]   = 0;
 
+    # temporarily shift U and V to positions identical before changes to G10/FR4
     $posVplane[0]   = $posZplane[0] + $APAWirePlaneSpacing;
-    $posVplane[1]   = $BottomOfAPA + $WrapCover + 3*$G10thickness + $Vactive_y/2;
+    $posVplane[1]   = $BottomOfAPA + $WrapCover + 4*$G10thickness + $Vactive_y_fix/2 - $orig_G10thickness;
     $posVplane[2]   = $posZplane[2];
 
     $posUplane[0]   = $posVplane[0] + $APAWirePlaneSpacing;
-    $posUplane[1]   = $BottomOfAPA + $WrapCover + 2*$G10thickness + $Uactive_y/2;
+    $posUplane[1]   = $BottomOfAPA + $WrapCover + 4*$G10thickness + $Uactive_y_fix/2 - 2 * $orig_G10thickness;
     $posUplane[2]   = $posZplane[2];
 
     $posTPCActive[0] = $posUplane[0] + ($TPCWirePlaneThickness/2 + $TPCActive_x/2);
-    $posTPCActive[1] = -$_[1]/2 + $TPCActive_y/2;
+    $posTPCActive[1] = -$_[1]/2 + $TPCActive_y/2; # this is incorrect, there's 1/2 APAGap below TPCActive within the TPC
     $posTPCActive[2] = 0;
 
 #wrap up the TPC file
@@ -1675,7 +1684,12 @@ if ($tpc_on==1) {
         $APACenter_y  =  - $Argon_y/2 + $SpaceAPAToFloor
                        + $APAphys_y/2
                        + $j*($APAphys_y+$APAGap_y);
+	#^ this will determine position of the inner TPC in Y, I seems to ignore the gap! Is it not part of the TPC volume?
 
+	# temporary fix of vertical position of the TPC. There's a bug in the assumption that the TPC does not contain the gap between APAs
+	# my $APACenter_y_fix = - $Argon_y/2 + $SpaceAPAToFloor
+	#     + ($j+0.5)*$TPC_y;
+	my $APACenter_y_fix = $APACenter_y - (2 - 4*$j)*($G10thickness - $orig_G10thickness);
 
       if( $workspace == 0 )
       {
@@ -1709,14 +1723,13 @@ if ($tpc_on==1) {
                               $rot_1 = "rPlus180AboutX"; } #put the readout end at the bottom for bottom APAs
 
 
-
 print CRYO <<EOF;
 
       <physvol>
         <volumeref ref="volTPC$SelectTPC_0"/>
         <position name="posTPC\-$tpc_0" unit="cm"
         x="@{[$APACenter_x - $APAFrame_x/2 - $TPC_0_x/2]}"
-        y="@{[$APACenter_y]}"
+        y="@{[$APACenter_y_fix]}"
         z="@{[$APACenter_z]}"/>
         <rotationref ref="$rot_0"/>
       </physvol>
@@ -1724,7 +1737,7 @@ print CRYO <<EOF;
         <volumeref ref="volTPC$SelectTPC_1"/>
         <position name="posTPC\-$tpc_1" unit="cm"
         x="@{[$APACenter_x + $APAFrame_x/2 + $TPC_1_x/2]}"
-        y="@{[$APACenter_y]}"
+        y="@{[$APACenter_y_fix]}"
         z="@{[$APACenter_z]}"/>
         <rotationref ref="$rot_1"/>
       </physvol>
@@ -1781,7 +1794,7 @@ print CRYO <<EOF;
         <volumeref ref="volTPCInner"/>
         <position name="posTPC\-$tpc_0" unit="cm"
         x="@{[$APACenter_x - $APAFrame_x/2 - $TPCInner_x/2]}"
-        y="@{[$APACenter_y]}"
+        y="@{[$APACenter_y_fix]}"
         z="@{[$APACenter_z]}"/>
         <rotationref ref="$rot_0"/>
       </physvol>
@@ -1789,7 +1802,7 @@ print CRYO <<EOF;
         <volumeref ref="volTPCInner"/>
         <position name="posTPC\-$tpc_1" unit="cm"
         x="@{[$APACenter_x + $APAFrame_x/2 + $TPCInner_x/2]}"
-        y="@{[$APACenter_y]}"
+        y="@{[$APACenter_y_fix]}"
         z="@{[$APACenter_z]}"/>
         <rotationref ref="$rot_1"/>
       </physvol>
