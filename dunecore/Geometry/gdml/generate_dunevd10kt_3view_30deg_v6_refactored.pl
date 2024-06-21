@@ -46,6 +46,11 @@
 #               - outer cathode arapucas shifted inwards
 #               - implemented bottom drift volume, together with double-sided arapucas on the cathode
 #               - arapucas on the outer sides of the cathode shifted inwards
+#           May 2024:
+#               - Created envelope of all CRMs to include all LAr between anode
+#                 and cathode. This is needed in order to save energy depositions
+#                 outside the 'active volumnes' which stretch between the CRMs
+#                 and the cathode.
 #
 #################################################################################
 
