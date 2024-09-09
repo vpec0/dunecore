@@ -44,10 +44,10 @@ dunefd_geo:
 
 dune10kt_geo:
 {
- Name:      "dune10kt_v1"
+ Name:      "dune10kt_v7"
 
- GDML:      "dune10kt_v1.gdml"
- ROOT:      "dune10kt_v1.gdml"
+ GDML:      "dune10kt_v7_refactored.gdml"
+ ROOT:      "dune10kt_v7_refactored.gdml"
 
  SortingParameters:	{ChannelsPerOpDet:	1}
 
